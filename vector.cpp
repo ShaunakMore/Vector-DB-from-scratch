@@ -4,8 +4,11 @@
 #include<string>
 #include<stdexcept>
 #include<map>
+#include<random>
+#include<chrono>
 using namespace std;
 
+// Custom struct to store vector and vector id
 struct VectorEntry{
     string id;
     vector<float>data;
@@ -48,35 +51,63 @@ float CosineSimilarity(const VectorEntry& a, const VectorEntry& b)
 class SimpleVectorDB
 {
     public:
+        // A storage to store all the VectorEntry objects and the vector id to size_t map
         vector<VectorEntry>VectorSpace;
         map<string,size_t> id_vector_map;
 
-    bool addVector(const string& id, const vector<float>& dataVector)
+        const string characterString = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const size_t id_length = 16;
+
+        // Random number generation members
+        std::mt19937 generator; // The random engine
+        std::uniform_int_distribution<int> random_index_gen; // The distribution
+
+        
+
+    SimpleVectorDB():
+        // Seed the generator ONCE when the SimpleVectorDB object is created
+        generator(chrono::high_resolution_clock::now().time_since_epoch().count()),
+
+        // Initialize the distribution with the range of your characters
+        random_index_gen(0, characterString.length() - 1)
+    {}
+    
+    // Fucntion to generate a random ID to assign to new VectorEntry types
+    string randomIDGenerator()
     {
-       try
-       { 
-            // Create new instance of VectorEntry and add the data
-            VectorEntry newEntry;
-            newEntry.data = dataVector;
-            newEntry.id = id;
-            
-            // Get index of new vector
-            size_t new_index = VectorSpace.size();
-
-            // Add new vector
-            VectorSpace.push_back(newEntry);
-
-            // Update vector map to map the newly added string to it's memory locaton for quick lookup
-            if(!id_vector_map[id]) id_vector_map[id] = new_index;
-
-            return true;
-        } 
-        catch(const char* str){
-            throw runtime_error(str);
+        string id = "";
+        id.reserve(id_length);
+        for(size_t i=0; i < id_length; ++i)
+        {
+            id +=  characterString[random_index_gen(generator)];
         }
+        return id;
+    }
+
+    bool addVector(const string& id, const vector<float>& dataVector)
+    { 
+        // Create new instance of VectorEntry and add the data
+        VectorEntry newEntry;
+        newEntry.data = dataVector;
+        newEntry.id = id;
+        
+        // Get index of new vector
+        size_t new_index = VectorSpace.size();
+
+        // Add new vector
+        VectorSpace.push_back(newEntry);
+
+        // Update vector map to map the newly added string to it's memory locaton for quick lookup
+        if(!id_vector_map[id]) id_vector_map[id] = new_index;
+
+        return true;
     }
 };
 
-int main(){
+int main()
+{
+    SimpleVectorDB obj;
+    string temp = obj.randomIDGenerator();
+    cout<<temp;
     return 0;
 }
