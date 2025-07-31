@@ -72,20 +72,30 @@ class SimpleVectorDB
         random_index_gen(0, characterString.length() - 1)
     {}
     
-    // Fucntion to generate a random ID to assign to new VectorEntry types
+    // Function to generate a random ID to assign to new VectorEntry types
     string randomIDGenerator()
     {
         string id = "";
-        id.reserve(id_length);
-        for(size_t i=0; i < id_length; ++i)
+        while(true)
         {
-            id +=  characterString[random_index_gen(generator)];
+            id = "";
+            id.reserve(id_length);
+
+            for(size_t i=0; i < id_length; ++i)   id +=  characterString[random_index_gen(generator)];
+
+            if(id_vector_map.find(id) == id_vector_map.end()) break;
+            
         }
+        
+        
+
         return id;
     }
 
     bool addVector(const string& id, const vector<float>& dataVector)
     { 
+        if(id_vector_map.find(id) != id_vector_map.end()) throw invalid_argument("Vector with id" + id + "already exists");
+
         // Create new instance of VectorEntry and add the data
         VectorEntry newEntry;
         newEntry.data = dataVector;
@@ -97,8 +107,8 @@ class SimpleVectorDB
         // Add new vector
         VectorSpace.push_back(newEntry);
 
-        // Update vector map to map the newly added string to it's memory locaton for quick lookup
-        if(!id_vector_map[id]) id_vector_map[id] = new_index;
+        // Update vector map to map the newly added string to it's memory location for quick lookup
+        id_vector_map[id] = new_index;
 
         return true;
     }
