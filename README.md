@@ -1,163 +1,153 @@
+# SimpleVectorDB 🚀
 
----
+A lightweight, header-only C++ vector database implementation for similarity search using cosine similarity. Perfect for prototyping, embedding storage, and small to medium-scale similarity search applications.
 
-````markdown
-# 🔍 SimpleVectorDB
+## ✨ Features
 
-A minimal, fast, and fully in-memory (for now!) **vector database** written in **modern C++**, built from scratch with zero external dependencies.  
-Currently supports exact k-Nearest Neighbors using Cosine Similarity. Plans underway for **disk storage**, **ANN search**, and much more.
+- **Fast Similarity Search**: K-nearest neighbors search using cosine similarity
+- **Simple API**: Easy-to-use interface for adding, retrieving, and searching vectors
+- **Memory Efficient**: In-memory storage with efficient data structures
+- **Robust Error Handling**: Comprehensive exception handling for edge cases
+- **Random ID Generation**: Automatic unique ID generation for vectors
+- **Zero Dependencies**: Pure C++ implementation using only standard library
 
-> Think of it as a baby Pinecone / FAISS... but handcrafted in pure C++.
+## 🛠️ Requirements
 
----
+- C++11 or later
+- Standard C++ library (no external dependencies)
 
-## 🚀 Features
+## 🚀 Quick Start
 
-- ✅ Add & retrieve vectors by unique ID
-- ✅ k-Nearest Neighbor search (Cosine Similarity)
-- ✅ Random ID generation with collision handling
-- ✅ Zero-vector detection & exception-safe search
-- ✅ Priority queue for efficient top-K retrieval
-- ✅ In-memory map for O(1) lookups
-- ✅ Fully unit-tested with informative console output
+### Basic Usage
 
----
+```cpp
+#include "SimpleVectorDB.h"
 
-## 🧠 Sample Usage
+int main() {
+    // Initialize the database
+    SimpleVectorDB db;
+    
+    // Add some vectors
+    db.addVector("doc1", {1.0f, 0.5f, 0.2f, 0.8f});
+    db.addVector("doc2", {0.9f, 0.6f, 0.1f, 0.7f});
+    db.addVector("doc3", {0.1f, 0.9f, 0.8f, 0.2f});
+    
+    // Search for similar vectors
+    std::vector<float> query = {1.0f, 0.4f, 0.3f, 0.9f};
+    auto results = db.kNearestNeighbours(query, 2);
+    
+    // Print results
+    for (const auto& result : results) {
+        std::cout << "ID: " << result.first 
+                  << ", Similarity: " << result.second << std::endl;
+    }
+    
+    return 0;
+}
+```
+
+### Compilation
 
 ```bash
-# Compile
-g++ -std=c++17 SimpleVectorDB.cpp -o vector_db
-
-# Run
-./vector_db
-````
-
-Sample output:
-
-```
---- Initializing SimpleVectorDB ---
-
---- Testing addVector ---
-Added 'doc_A'.
-Added 'doc_B'.
-...
-
-Searching for 3 nearest neighbors to query_vec_1 (similar to A/B):
-  ID: doc_B, Similarity: 0.999
-  ID: doc_A, Similarity: 0.998
-...
+g++ -std=c++11 -O2 your_program.cpp -o your_program
 ```
 
----
+## 📖 API Reference
 
-## 🧱 Project Structure
+### Core Methods
 
-```text
-.
-├── SimpleVectorDB.cpp   # Main source file (DB logic + test cases)
-└── README.md            # You are here!
-```
+#### `addVector(const std::string& id, const std::vector<float>& dataVector)`
+Adds a new vector to the database.
+- **Parameters**: 
+  - `id`: Unique identifier for the vector
+  - `dataVector`: The vector data as a list of floats
+- **Throws**: `std::invalid_argument` if ID already exists
+- **Returns**: `bool` (always true on success)
 
----
+#### `getVectorByID(const std::string& findID)`
+Retrieves a vector by its ID.
+- **Parameters**: `findID`: The ID to search for
+- **Returns**: `const VectorEntry*` pointer to the vector entry
+- **Throws**: `std::invalid_argument` if ID doesn't exist
 
-## 🔧 Build Instructions
+#### `kNearestNeighbours(const std::vector<float>& query_vector, const int k)`
+Finds the k most similar vectors to the query vector.
+- **Parameters**: 
+  - `query_vector`: The vector to search for
+  - `k`: Number of nearest neighbors to return
+- **Returns**: `std::vector<std::pair<std::string, float>>` - pairs of (ID, similarity_score)
+- **Throws**: Various exceptions for invalid inputs
 
-Ensure a C++17+ compiler:
+#### `randomIDGenerator()`
+Generates a unique random ID for vectors.
+- **Returns**: `std::string` - a 16-character random ID
+- **Note**: Automatically ensures uniqueness within the database
 
+### Utility Functions
+
+#### `CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)`
+Calculates cosine similarity between two vectors.
+- **Returns**: `float` between -1 and 1 (1 = identical, 0 = orthogonal, -1 = opposite)
+- **Throws**: `std::runtime_error` for dimension mismatch or zero-length vectors
+
+## 🎯 Use Cases
+
+- **Document Similarity**: Compare text embeddings for semantic search
+- **Recommendation Systems**: Find similar items based on feature vectors  
+- **Image Search**: Compare image feature vectors for visual similarity
+- **Data Analysis**: Cluster and find patterns in high-dimensional data
+- **Prototyping**: Quick setup for ML/AI projects requiring similarity search
+
+## ⚡ Performance Characteristics
+
+- **Time Complexity**: 
+  - Insert: O(1) average case
+  - Search: O(n×d) where n = number of vectors, d = vector dimensions
+  - Retrieval by ID: O(log n)
+- **Space Complexity**: O(n×d) for storing vectors
+- **Suitable for**: Up to ~100K vectors with reasonable performance
+
+## 🧪 Testing
+
+The included test suite covers:
+- ✅ Vector addition and duplicate ID handling
+- ✅ Vector retrieval by ID
+- ✅ K-nearest neighbors search
+- ✅ Error handling for edge cases
+- ✅ Zero vector handling
+- ✅ Random ID generation
+
+Run the tests:
 ```bash
-g++ -std=c++17 SimpleVectorDB.cpp -o vector_db
+g++ -std=c++11 -O2 SimpleVectorDB.cpp -o test_db
+./test_db
 ```
 
-Or with `clang++`:
+## 🔮 Future Goals
 
-```bash
-clang++ -std=c++17 SimpleVectorDB.cpp -o vector_db
-```
+Here's what's next on the roadmap:
+* 💾 **On-Disk Persistence** Load/save vectors using binary serialization or memory-mapped files.
+* ⚙️ **Approximate Nearest Neighbor (ANN) Search** Speed things up with LSH, KD-Trees, or other ANN techniques.
+* 🧵 **Multithreaded Search & Insertion** Thread-safe operations using mutexes or concurrent data structures.
+* 🧠 **Custom Distance Metrics** Add support for Euclidean, Manhattan, etc.
 
----
+## 🤝 Contributing
 
-## 🧰 Internals
+Contributions are welcome! Here are some ways you can help:
+- 🐛 Report bugs and edge cases
+- 💡 Suggest new features
+- 🔧 Submit performance improvements
+- 📚 Improve documentation
+- ✨ Add more distance metrics
 
-### `class SimpleVectorDB`
+## 📝 License
 
-* Internal storage via: `std::vector<VectorEntry>`
-* Fast ID lookup using: `std::map<std::string, size_t>`
-* Cosine similarity calculation
-* Top-K results via `std::priority_queue`
-* Random 16-character ID generation using `std::mt19937`
+This project is open source. Feel free to use, modify, and distribute as needed.
 
-### `struct VectorEntry`
+## 🙏 Acknowledgments
 
-A simple structure that stores:
-
-* `std::string id` – Unique identifier
-* `std::vector<float> data` – The actual embedding or vector
-
----
-
-## 🔮 Planned Features (Coming Soon)
-
-Here’s what’s next on the roadmap:
-
-* 💾 **On-Disk Persistence**
-  Load/save vectors using binary serialization or memory-mapped files.
-
-* ⚙️ **Approximate Nearest Neighbor (ANN) Search**
-  Speed things up with LSH, KD-Trees, or other ANN techniques.
-
-* 🧵 **Multithreaded Search & Insertion**
-  Thread-safe operations using mutexes or concurrent data structures.
-
-* 🧠 **Custom Distance Metrics**
-  Add support for Euclidean, Manhattan, etc.
-
-* 🚀 **REST API**
-  Expose endpoints using Crow or Pistache for integration with LLMs and external apps.
-
-* 📉 **Vector Compression / Reduction**
-  Use PCA or random projections for high-dim vector optimization.
-
-* 🧩 **Vector Metadata Support**
-  Allow storing extra info (tags, labels) for each vector.
-
-* 🔍 **Advanced Filtering**
-  Filter search results based on metadata constraints.
+Built with modern C++ best practices and designed for simplicity and performance. Perfect for educational purposes, prototyping, and small to medium-scale applications.
 
 ---
 
-## 🧪 Testing Philosophy
-
-Tests included in `main()` cover:
-
-* Basic vector addition & retrieval
-* Random ID generation
-* Handling duplicate IDs
-* kNN search correctness
-* Exception handling for edge cases (zero vectors, empty input, k=0, etc.)
-
----
-
-## 🤖 Ideal Use Cases
-
-* Local retrieval for RAG pipelines
-* Learning core vector DB concepts
-* Embedding search for small projects
-* Building your own FAISS-style backend in C++
-
----
-
-## 📜 License
-
-MIT — Free to use, modify, remix, or launch into orbit.
-
----
-
-## 👨‍💻 Author
-
-Built with caffeine, cosine, and C++ by [Shaunak](https://github.com/ShaunakMore)
-
-````
-
----
-
+**Happy vector searching!** 🔍✨
