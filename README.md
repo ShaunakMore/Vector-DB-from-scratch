@@ -71,7 +71,6 @@ The `test.cpp` file contains a few example inserts, saves to disk, loads from di
 
 ## 📌 TODO
 
-* [ ] Implement cosine similarity
 * [ ] Add more efficient ANN indexing (e.g., KD-Tree, HNSW)
 * [ ] Add benchmarking utilities
 * [ ] Add CLI interface
