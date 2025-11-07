@@ -16,6 +16,7 @@
 struct VectorEntry{
     std::string id;
     std::vector<float>data;
+    bool deleted = false;
 };
 
 float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b);
@@ -24,6 +25,9 @@ class ShoreDB {
 public:
     std::vector<VectorEntry> VectorSpace;
     std::map<std::string, size_t> id_vector_map;
+    std::queue<int> freeSlots;
+    bool set_auto_cleanup = true;
+    float cleanup_threshold = 0.3;
 
     const std::string characterString = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const size_t id_length = 16;
@@ -44,4 +48,14 @@ public:
     bool saveToDisk(const std::string& path = "ShoreDB") const;
 
     bool loadFromFile(const std::string& filename);
+    
+    bool deleteVector(const std::string id);
+
+    bool quickDelete(const std::string id);
+
+    bool removeDeletedVectors();
+
+    float getStats();
+
+    void autoCleanup();
 };

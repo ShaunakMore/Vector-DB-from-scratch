@@ -62,6 +62,7 @@ float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)
     // Function to add vectors to the vector space(vector to store all Vector Entry)
     bool ShoreDB::addVector(const std::string& id, const std::vector<float>& dataVector)
     { 
+        if(set_auto_cleanup) autoCleanup();
         // Check to see if a vector of the similar id already exists in the map
         if(id_vector_map.find(id) != id_vector_map.end()) throw std::invalid_argument("Vector with id '" + id + "' already exists");
 
@@ -102,6 +103,7 @@ float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)
     // Top K nearest neighbours search function
     std::vector<std::pair<std::string,float>> ShoreDB::kNearestNeighbours(const std::vector<float>& query_vector,const int k)
     {
+        if(set_auto_cleanup) autoCleanup();
         // Check for argument errors
         if(query_vector.size() == 0) throw std::invalid_argument("Query vector should not be zero");
 
@@ -117,12 +119,14 @@ float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)
         for( size_t i = 0 ; i < vectorSpaceSize ; ++i )
         {
             float distance = 0;
-
-            try{
-                distance = CosineSimilarity(query_vector,VectorSpace[i].data);
-            }catch(std::runtime_error& e){
-                std::cerr<< "Warning: Skipping vector with id: '" << VectorSpace[i].id << "' because of cosine similarity error "<< e.what()<<std::endl;
-                continue;
+            if(!VectorSpace[i].deleted)
+            {
+                try{
+                    distance = CosineSimilarity(query_vector,VectorSpace[i].data);
+                }catch(std::runtime_error& e){
+                    std::cerr<< "Warning: Skipping vector with id: '" << VectorSpace[i].id << "' because of cosine similarity error "<< e.what()<<std::endl;
+                    continue;
+                }
             }
 
             // If heap size is less than k push into heap, else if the top element
@@ -169,6 +173,8 @@ float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)
         // Iterate through each vector in vectorspace
         for(size_t i = 0; i< VectorSpace.size(); ++i)
         {
+            if(VectorSpace[i].deleted == true) continue;
+
             const auto& entry = VectorSpace[i];
 
             // Write the size of id of vector and then the id
@@ -257,5 +263,83 @@ float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b)
         database.close();
 
         return true;
+    }
+
+    bool ShoreDB::deleteVector(const std::string id){
+        try{
+            int to_del = id_vector_map[id];
+            VectorSpace[to_del].deleted = true;
+            freeSlots.push(to_del);
+            id_vector_map.erase(id);
+        }
+        catch(...){
+            throw std::runtime_error("Could not delete vector");
+        }
+        return true;
+    }
+
+    bool ShoreDB::quickDelete(std::string id)
+    {
+        try
+        {
+            while(!VectorSpace.empty() && VectorSpace.back().deleted == true)
+            {
+                VectorSpace.pop_back();
+            }
+            auto to_del = id_vector_map[id];
+            auto last = VectorSpace.back();
+            VectorSpace[to_del].data = last.data;
+            VectorSpace[to_del].id  = last.id;
+            VectorSpace[to_del].deleted = false;
+            id_vector_map[last.id] = to_del;
+            VectorSpace.pop_back();
+            freeSlots.push(to_del);
+            id_vector_map.erase(id);
+            return true;
+        }
+        catch(...){
+            throw std::runtime_error("Could not delete vector");
+        }
+        return false;
+    }
+
+    bool ShoreDB::removeDeletedVectors()
+    {
+            for(std::size_t i = 0; i < VectorSpace.size(); ++i)
+            {
+                if(VectorSpace[i].deleted == true)
+                {
+                    while(!VectorSpace.empty() && VectorSpace.back().deleted == true){
+                        VectorSpace.pop_back();
+                    }
+                    if (VectorSpace.empty()) return true;
+                    
+                    if (i >= VectorSpace.size()) break;    
+
+                    auto last = VectorSpace.back();
+                    VectorSpace[i].data = last.data;
+                    VectorSpace[i].id  = last.id;
+                    VectorSpace[i].deleted = false;
+                    id_vector_map[last.id] = i;
+                    VectorSpace.pop_back();
+                }
+            }
+
+        return true;
+    }
+
+    float ShoreDB::getStats(){
+        return float(freeSlots.size())/float(VectorSpace.size());
+    }
+
+    void ShoreDB::autoCleanup(){
+        float threshold = getStats();
+        if(threshold >= cleanup_threshold)
+        {
+            bool res = removeDeletedVectors();
+
+            if(!res) std::runtime_error("Failed to autocleanup");
+            
+        }
     }
 
