@@ -1,25 +1,21 @@
 #pragma once
 
-#include<iostream>
 #include<vector>
-#include<cmath>
 #include<string>
-#include<stdexcept>
 #include<map>
 #include<random>
-#include<chrono>
 #include<queue>
-#include<functional>
-#include<fstream>
+#include "../include/distances.hpp"
 
 // Custom struct to store vector and vector id
 struct VectorEntry{
     std::string id;
     std::vector<float>data;
     bool deleted = false;
+    
 };
 
-float CosineSimilarity(const std::vector<float>& a, const std::vector<float>& b);
+
 
 class ShoreDB {
 public:
