@@ -19,9 +19,7 @@ class Node
 
 class HNSW{
   public:
-    std::vector<Node> nodes;
-    std::vector<std::vector<int>> graph;
-    
+    std::vector<Node> nodes;    
     std::vector<int> visited;
     int search_version;
 
@@ -48,7 +46,5 @@ class HNSW{
     int assignLevel();
     int greedySearch(int entryNode, const std::vector<float>&queryVector,int level);
     std::priority_queue<std::pair<float,int>> searchLayer(const std::vector<float>&query,int entryNode,int layer,int ef);
-    void connectNodes(int node1,int node2,int layer);
     void pruneNeighbours(int nodeId,int layer);
-    void removeNeighbour(int nodeId, int neighbourId, int layer);
 };

@@ -171,13 +171,17 @@ void HNSW::insert(const std::vector<float>& vec)
           candidateList.push_back(closest_node_for_next_layer);
           topCandidates.pop();
       }
-
+      
+      // Assign all efConstruction candidates to neighbour list
       nodes[id].neighbours[layer] = candidateList;
       
+      // Prune hndles the heuristic pruning of the farthest edges
+      // (The lion doesn't concern itself with selecting the best edges)
       pruneNeighbours(id, layer);
 
       for (int survivingId : nodes[id].neighbours[layer])
       {
+          // Now we prune edges only the final surviving edges after pruning
           nodes[survivingId].neighbours[layer].push_back(id);
           pruneNeighbours(survivingId, layer); 
       }
@@ -208,13 +212,19 @@ std::priority_queue<std::pair<float,int>> HNSW::searchLayer(const std::vector<fl
     ef: integer, The hyperparameter efConstruction that decides the size of the candidate list
   */
 
-  // Makes use of vectors linear nature to reduce memory allocation and reallocation
-  // also reduces access time to O(1)
+  /*
+    Makes use of vectors linear nature to reduce memory allocation and reallocation,
+    also reduces access time to O(1).
+    Increment search version on each function call so the corresponding visited edges correspond to the version.
+  */ 
+
   search_version++;
-  if(search_version == 0){
+  if(search_version == 0)
+  {
     std::fill(visited.begin(),visited.end(),0);
     search_version = 1;
   }
+
   std::priority_queue<std::pair<float,int>,std::vector<std::pair<float,int>>,std::greater<std::pair<float,int>>> candidateQueue;
   std::priority_queue<std::pair<float,int>,std::vector<std::pair<float,int>>> topCandidates;
 
@@ -243,12 +253,12 @@ std::priority_queue<std::pair<float,int>> HNSW::searchLayer(const std::vector<fl
           visited[neighbour] = search_version;
           float distNeighbour = distance(query, nodes[neighbour].data);
 
-          if(topCandidates.size() < ef || distNeighbour < topCandidates.top().first)
+          if(topCandidates.size() < (size_t)ef || distNeighbour < topCandidates.top().first)
           {
             candidateQueue.push({distNeighbour, neighbour});
             topCandidates.push({distNeighbour, neighbour});
 
-            if(topCandidates.size() > ef)
+            if(topCandidates.size() > (size_t)ef)
             {
               topCandidates.pop();
             }   
@@ -259,111 +269,94 @@ std::priority_queue<std::pair<float,int>> HNSW::searchLayer(const std::vector<fl
   return topCandidates;
 }
 
-void HNSW::connectNodes(int node1,int node2,int layer)
-{
-  /*
-  FUNCTION:
-    Connects two nodes using bidirectional edges. Also prunes the edges if edges exceed M (max edeges possible).
-
-  FUNCTION PARAMETERS:
-    node1, node2: integer, Index Ids of the two nodes to be connected
-    layer: integer, The layer on which the connections are to be made
-  */
-
-  nodes[node1].neighbours[layer].push_back(node2);
-  nodes[node2].neighbours[layer].push_back(node1);
-
-  pruneNeighbours(node1,layer);
-  pruneNeighbours(node2,layer);
-}
-
 void HNSW::pruneNeighbours(int nodeId, int layer)
 {
-    std::vector<int>& neighbours = nodes[nodeId].neighbours[layer];
-    
-    // Layer 0 gets double capacity to prevent dead ends at the base
-    int maxM = (layer == 0) ? M * 2 : M;
-    if (neighbours.size() <= (size_t)maxM) return;
-
-    // Cache distances and sort closest-first
-    std::vector<std::pair<float, int>> candidates;
-    for (int neighbour : neighbours) {
-        float d = distance(nodes[nodeId].data, nodes[neighbour].data);
-        candidates.push_back({d, neighbour});
-    }
-    std::sort(candidates.begin(), candidates.end());
-
-    std::vector<int> keptNeighbours;
-    std::vector<int> discardedNeighbours;
-
-    // The Heuristic Check (Spatial Diversity)
-    for (auto& candidate : candidates) {
-        if (keptNeighbours.size() >= (size_t)maxM) break;
-
-        int candidateId = candidate.second;
-        float distToNode = candidate.first;
-        bool goodEdge = true;
-
-        // Is this candidate closer to ANY already kept neighbour than to the base node?
-        for (int keptId : keptNeighbours) {
-            float distToKept = distance(nodes[candidateId].data, nodes[keptId].data);
-            if (distToKept < distToNode) {
-                goodEdge = false; 
-                break;
-            }
-        }
-
-        if (goodEdge) keptNeighbours.push_back(candidateId);
-        else discardedNeighbours.push_back(candidateId);
-    }
-
-    // Fallback: fill remaining slots with closest discarded nodes
-    for (int discardedId : discardedNeighbours) {
-        if (keptNeighbours.size() >= (size_t)maxM) break;
-        keptNeighbours.push_back(discardedId);
-    }
-
-    neighbours = std::move(keptNeighbours);
-}
-
-void HNSW::removeNeighbour(int nodeId,int neighbourId, int layer)
-{
   /*
   FUNCTION:
-    Removes the bidirectional edges form the pruned edges from pruneNeighbours.
+    Prunes edges heuristically while maintaining spacial diversity.
       
   FUNCTION PARAMETERS:
-    nodeId: integer, The index id of the edge that has been pruned in pruneNeighbours.
-    neighbourId: integer, The index id of the edge to which the connection is to be severed.
+    nodeId: integer, The index id of the node whose edges have to be pruned.
     layer: integer, The layer from of the graph from which the edges are being pruned.
   */
 
   std::vector<int>& neighbours = nodes[nodeId].neighbours[layer];
-  auto it = std::remove(neighbours.begin(),neighbours.end(),neighbourId);
-  neighbours.erase(it,neighbours.end());
+  
+  // Layer 0 gets double capacity to prevent dead ends at the base
+  int maxM = (layer == 0) ? M * 2 : M;
+
+  // Check if neighbours already withing M limit
+  if (neighbours.size() <= (size_t)maxM) return;
+
+  // Cache distances and sort closest-first
+  std::vector<std::pair<float, int>> candidates;
+  for (int neighbour : neighbours) 
+  {
+      float d = distance(nodes[nodeId].data, nodes[neighbour].data);
+      candidates.push_back({d, neighbour});
+  }
+  std::sort(candidates.begin(), candidates.end());
+
+  std::vector<int> keptNeighbours;
+  std::vector<int> discardedNeighbours;
+
+  // The Heuristic Check
+  for (auto& candidate : candidates) 
+  {
+      if (keptNeighbours.size() >= (size_t)maxM) break;
+
+      int candidateId = candidate.second;
+      float distToNode = candidate.first;
+      bool goodEdge = true;
+
+      // Check if this candidate is closer to ANY already kept neighbour than to the base node
+      for (int keptId : keptNeighbours) 
+      {
+          float distToKept = distance(nodes[candidateId].data, nodes[keptId].data);
+          if (distToKept < distToNode) 
+          {
+              goodEdge = false; 
+              break;
+          }
+      }
+
+      if (goodEdge) keptNeighbours.push_back(candidateId);
+      else discardedNeighbours.push_back(candidateId);
+  }
+
+  // Fallback: fill remaining slots with closest discarded nodes
+  for (int discardedId : discardedNeighbours) {
+      if (keptNeighbours.size() >= (size_t)maxM) break;
+      keptNeighbours.push_back(discardedId);
+  }
+
+  neighbours = std::move(keptNeighbours);
 }
 
 std::vector<std::pair<int,float>> HNSW::search(std::vector<float>& query,int k){
   /*
   FUNCTION:
-    Removes the bidirectional edges form the pruned edges from pruneNeighbours.
+    Search for top-k candidates
       
   FUNCTION PARAMETERS:
-    nodeId: integer, The index id of the edge that has been pruned in pruneNeighbours.
-    neighbourId: integer, The index id of the edge to which the connection is to be severed.
-    layer: integer, The layer from of the graph from which the edges are being pruned.
+    query: vector (float), The query vector to which we have to finc the most similar vectors.
+    k: integer, The no. of top similar vector to return.
   */
- 
+  
+  // Normalize the query vector since all the added vectors are normalized
   float sqr_sum = 0.0;
-  for(float i : query){
+  for(float i : query)
+  {
       sqr_sum += (i * i);
   }
   float mag = std::sqrt(sqr_sum);
-  if(mag > 0){
+  if(mag > 0)
+  {
       for(float& val : query){
           val /= mag;
       }
   }
+
   std::vector<std::pair<int,float>>topK;
 
   if(nodes.empty())
@@ -384,7 +377,7 @@ std::vector<std::pair<int,float>> HNSW::search(std::vector<float>& query,int k){
   }
   while(!topCandidates.empty())
   {
-    topK.push_back(std::make_pair(topCandidates.top().second,topCandidates.top().first));
+    topK.push_back({topCandidates.top().second,topCandidates.top().first});
     topCandidates.pop();
   }
   
