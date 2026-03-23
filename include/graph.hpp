@@ -1,5 +1,8 @@
 #pragma once
 #include<vector>
+#include<queue>
+#include<random>
+
 
 class Node
 {
@@ -8,23 +11,35 @@ class Node
     int id;
     std::vector<float>data;
     int level;
-    std::vector<std::vector<int>>neighbors;
+    std::vector<std::vector<int>>neighbours;
     Node(int assignedId,std::vector<float>vecData,int assignedLevel);
+    void normaliseVector(std::vector<float>& vec);
+
 };
 
 class HNSW{
   public:
     std::vector<Node> nodes;
+    std::vector<std::vector<int>> graph;
+    
+    std::vector<int> visited;
+    int search_version;
+
     int entryPoint;
     int maxLevel;
     int M;
     int efConstruction;
+    int efSearch;
     float mL;
+    std::mt19937 gen;
+    std::uniform_real_distribution<float> dist;
     
-    HNSW(int m,int efC);
+
+    
+    HNSW(int m,int efC,int efS);
 
     void insert(const std::vector<float>& vec);
-    std::vector<float> search(const std::vector<float>& query,int k);
+    std::vector<std::pair<int,float>> search(std::vector<float>& query,int k);
     
 
   private:
@@ -32,7 +47,8 @@ class HNSW{
     float distance(const std::vector<float>&vec1,const std::vector<float>&vec2);
     int assignLevel();
     int greedySearch(int entryNode, const std::vector<float>&queryVector,int level);
-    std::vector<int>searchLayer(const std::vector<float>&query,int entryNode,int layer,int ef);
+    std::priority_queue<std::pair<float,int>> searchLayer(const std::vector<float>&query,int entryNode,int layer,int ef);
     void connectNodes(int node1,int node2,int layer);
-    
+    void pruneNeighbours(int nodeId,int layer);
+    void removeNeighbour(int nodeId, int neighbourId, int layer);
 };
