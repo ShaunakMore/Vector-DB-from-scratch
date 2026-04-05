@@ -23,7 +23,10 @@ class IVF {
   /**
    *@brief Trains centroids on sample data from the original dataset
    *@param
-   *@return Returns vector of trained centroids to be used for IVF
+   *@return Returns vector of trained centroids to be used for IVF.
+   *Modifies the class variable centroids and reassigns it to the newly trained
+    centroids. Frequency of training can be changed by changing the class
+    variable rebuild_cluster. Uses Mini-batch
    */
   std::vector<std::vector<float>> trainCentroids();
 
@@ -40,6 +43,8 @@ class IVF {
    *@return Top-k nearest vectors to query vector
    */
   std::vector<std::vector<float>> search(const std::vector<float> &query);
+
+  void testCreateIndex();
 
  private:
   IVFHyperparams params;
@@ -59,6 +64,3 @@ class IVF {
   float distance(const std::vector<float> &vec1,
                  const std::vector<float> &vec2);
 };
-
-void addInplace(std::vector<float> &a, std::vector<float> &b);
-void scalarProd(const int a, std::vector<float> &vec);
