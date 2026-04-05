@@ -1,4 +1,5 @@
 #include "distances.hpp"
+
 #include<stdexcept>
 #include<cmath>
 

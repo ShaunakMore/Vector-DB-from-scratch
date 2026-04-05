@@ -20,3 +20,5 @@
 *.pyc
 /.cache
 /.vscode
+.clang-format
+compile_commands.json
