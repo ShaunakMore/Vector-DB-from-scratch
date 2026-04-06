@@ -1,4 +1,4 @@
-#include "shore_db.hpp"
+#include "flat.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -8,11 +8,9 @@
 
 #include "distances.hpp"
 
-
 ShoreDB::ShoreDB()
     :  // Seed the generator ONCE when the ShoreDB object is created
-      generator(
-          std::chrono::high_resolution_clock::now().time_since_epoch().count()),
+      generator(std::chrono::high_resolution_clock::now().time_since_epoch().count()),
 
       // Initialize the distribution with the range of your characters
       random_index_gen(0, characterString.length() - 1) {}
@@ -24,8 +22,7 @@ std::string ShoreDB::randomIDGenerator() {
     id = "";
     id.reserve(id_length);
 
-    for (size_t i = 0; i < id_length; ++i)
-      id += characterString[random_index_gen(generator)];
+    for (size_t i = 0; i < id_length; ++i) id += characterString[random_index_gen(generator)];
 
     if (id_vector_map.find(id) == id_vector_map.end()) break;
   }
@@ -33,8 +30,7 @@ std::string ShoreDB::randomIDGenerator() {
 }
 
 // Function to add vectors to the vector space(vector to store all Vector Entry)
-bool ShoreDB::addVector(const std::string& id,
-                        const std::vector<float>& dataVector) {
+bool ShoreDB::addVector(const std::string& id, const std::vector<float>& dataVector) {
   if (set_auto_cleanup) autoCleanup();
   // Check to see if a vector of the similar id already exists in the map
   if (id_vector_map.find(id) != id_vector_map.end())
@@ -68,8 +64,7 @@ const VectorEntry* ShoreDB::getVectorByID(const std::string& findID) const {
   auto it = id_vector_map.find(findID);
 
   if (it == id_vector_map.end())
-    throw std::invalid_argument("Vector with id '" + findID +
-                                "' does not exist");
+    throw std::invalid_argument("Vector with id '" + findID + "' does not exist");
 
   size_t toReturn = it->second;
 
@@ -81,8 +76,7 @@ std::vector<std::pair<std::string, float>> ShoreDB::kNearestNeighbours(
     const std::vector<float>& query_vector, const int k) {
   if (set_auto_cleanup) autoCleanup();
   // Check for argument errors
-  if (query_vector.size() == 0)
-    throw std::invalid_argument("Query vector should not be zero");
+  if (query_vector.size() == 0) throw std::invalid_argument("Query vector should not be zero");
 
   if (k <= 0) throw std::invalid_argument("K should be greater than 0");
 
@@ -90,8 +84,7 @@ std::vector<std::pair<std::string, float>> ShoreDB::kNearestNeighbours(
 
   // Get vector space size
   size_t vectorSpaceSize = VectorSpace.size();
-  std::priority_queue<std::pair<float, std::string>,
-                      std::vector<std::pair<float, std::string>>,
+  std::priority_queue<std::pair<float, std::string>, std::vector<std::pair<float, std::string>>,
                       std::greater<std::pair<float, std::string>>>
       top_k;
 
@@ -103,8 +96,7 @@ std::vector<std::pair<std::string, float>> ShoreDB::kNearestNeighbours(
         distance = CosineSimilarity(query_vector, VectorSpace[i].data);
       } catch (std::runtime_error& e) {
         std::cerr << "Warning: Skipping vector with id: '" << VectorSpace[i].id
-                  << "' because of cosine similarity error " << e.what()
-                  << std::endl;
+                  << "' because of cosine similarity error " << e.what() << std::endl;
         continue;
       }
     }
@@ -147,8 +139,7 @@ bool ShoreDB::saveToDisk(const std::string& path) const {
 
   // Binary file uses write method
   // Write the size of Vectorspace where all the vectors are stored
-  vecFile.write(reinterpret_cast<const char*>(&vectorspaceSize),
-                sizeof(size_t));
+  vecFile.write(reinterpret_cast<const char*>(&vectorspaceSize), sizeof(size_t));
 
   // Iterate through each vector in vectorspace
   for (size_t i = 0; i < VectorSpace.size(); ++i) {
@@ -166,8 +157,7 @@ bool ShoreDB::saveToDisk(const std::string& path) const {
     // Write size of data and then the data
     size_t entryVecLen = entryVec.size();
     vecFile.write(reinterpret_cast<const char*>(&entryVecLen), sizeof(size_t));
-    vecFile.write(reinterpret_cast<const char*>(entryVec.data()),
-                  entryVecLen * sizeof(float));
+    vecFile.write(reinterpret_cast<const char*>(entryVec.data()), entryVecLen * sizeof(float));
   }
 
   // Close file and return true
@@ -183,8 +173,7 @@ bool ShoreDB::loadFromFile(const std::string& filename) {
   // Open database binary file
   database.open(filename, std::ios::binary);
 
-  if (!database.is_open())
-    throw std::runtime_error("Could not open file to read");
+  if (!database.is_open()) throw std::runtime_error("Could not open file to read");
 
   // Clear existing data
   VectorSpace.clear();
@@ -196,8 +185,7 @@ bool ShoreDB::loadFromFile(const std::string& filename) {
   database.read(reinterpret_cast<char*>(&vectorSpaceSize), sizeof(size_t));
 
   if (database.fail())
-    throw std::runtime_error(
-        "File corrupted: Failed to read Vector Space length");
+    throw std::runtime_error("File corrupted: Failed to read Vector Space length");
 
   // Read all the vectors based on vector space size
   for (size_t i = 0; i < vectorSpaceSize; ++i) {
@@ -205,31 +193,26 @@ bool ShoreDB::loadFromFile(const std::string& filename) {
     size_t idLen;
     database.read(reinterpret_cast<char*>(&idLen), sizeof(size_t));
 
-    if (database.fail())
-      throw std::runtime_error("File corrupted: Failed to read ID length");
+    if (database.fail()) throw std::runtime_error("File corrupted: Failed to read ID length");
 
     // Read id string
     std::string tempid;
     tempid.resize(idLen);
     database.read(reinterpret_cast<char*>(tempid.data()), idLen);
 
-    if (database.fail())
-      throw std::runtime_error("File corrupted: Failed to read ID");
+    if (database.fail()) throw std::runtime_error("File corrupted: Failed to read ID");
 
     // Read size of data
     size_t dataSize;
     database.read(reinterpret_cast<char*>(&dataSize), sizeof(size_t));
 
-    if (database.fail())
-      throw std::runtime_error("File corrupted: Failed to read data length");
+    if (database.fail()) throw std::runtime_error("File corrupted: Failed to read data length");
 
     // Read the data vector
     std::vector<float> tempdata(dataSize);
-    database.read(reinterpret_cast<char*>(tempdata.data()),
-                  dataSize * sizeof(float));
+    database.read(reinterpret_cast<char*>(tempdata.data()), dataSize * sizeof(float));
 
-    if (database.fail())
-      throw std::runtime_error("File corrupted: Failed to read data");
+    if (database.fail()) throw std::runtime_error("File corrupted: Failed to read data");
 
     // Create temporary VectorEntry instance
     VectorEntry temp;
@@ -305,9 +288,7 @@ bool ShoreDB::removeDeletedVectors() {
   return true;
 }
 
-float ShoreDB::getStats() {
-  return float(freeSlots.size()) / float(VectorSpace.size());
-}
+float ShoreDB::getStats() { return float(freeSlots.size()) / float(VectorSpace.size()); }
 
 void ShoreDB::autoCleanup() {
   float threshold = getStats();
