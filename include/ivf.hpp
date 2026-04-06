@@ -6,13 +6,13 @@
  *@brief Hyperparameters required for the initialization of and IVF Index
  */
 struct IVFHyperparams {
-  int nlists = 100;         ///< Number of clusters(Inverted Lists).
-  int nprob = 10;           ///< Number of clusters to search during query.
-  int sample_size = 50000;  ///< Size of the training dataset to be used to train centroids.
-  int max_vectors_per_cluster = 10000;  ///< Max number of vectors to be allowed per cluster.
+  int nlists = 100;              ///< Number of clusters(Inverted Lists).
+  int nprob = 10;                ///< Number of clusters to search during query.
+  int sample_size = 50000;       ///< Size of the training dataset to be used to train centroids.
   int rebuild_clusters = 50000;  ///< Number of vectors after which centroids should be retrained,
                                  ///< and clusters whould be rebuilt.
   int batch_size = 100;          ///< Mini-batch size for Mini-batch k-means
+  int max_iters = 20;            ///< Maximum iterations of k-means.
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist;
 };
