@@ -8,7 +8,7 @@
 
 #include "distances.hpp"
 
-ShoreDB::ShoreDB()
+Flat::Flat()
     :  // Seed the generator ONCE when the ShoreDB object is created
       generator(std::chrono::high_resolution_clock::now().time_since_epoch().count()),
 
@@ -16,7 +16,7 @@ ShoreDB::ShoreDB()
       random_index_gen(0, characterString.length() - 1) {}
 
 // Function to generate a random ID to assign to new VectorEntry types
-std::string ShoreDB::randomIDGenerator() {
+std::string Flat::randomIDGenerator() {
   std::string id = "";
   while (true) {
     id = "";
@@ -30,7 +30,7 @@ std::string ShoreDB::randomIDGenerator() {
 }
 
 // Function to add vectors to the vector space(vector to store all Vector Entry)
-bool ShoreDB::addVector(const std::string& id, const std::vector<float>& dataVector) {
+bool Flat::addVector(const std::string& id, const std::vector<float>& dataVector) {
   if (set_auto_cleanup) autoCleanup();
   // Check to see if a vector of the similar id already exists in the map
   if (id_vector_map.find(id) != id_vector_map.end())
@@ -59,7 +59,7 @@ bool ShoreDB::addVector(const std::string& id, const std::vector<float>& dataVec
 }
 
 // fetch vectors by their id from the map
-const VectorEntry* ShoreDB::getVectorByID(const std::string& findID) const {
+const VectorEntry* Flat::getVectorByID(const std::string& findID) const {
   // Search map for vector
   auto it = id_vector_map.find(findID);
 
@@ -72,7 +72,7 @@ const VectorEntry* ShoreDB::getVectorByID(const std::string& findID) const {
 }
 
 // Top K nearest neighbours search function
-std::vector<std::pair<std::string, float>> ShoreDB::kNearestNeighbours(
+std::vector<std::pair<std::string, float>> Flat::kNearestNeighbours(
     const std::vector<float>& query_vector, const int k) {
   if (set_auto_cleanup) autoCleanup();
   // Check for argument errors
@@ -127,7 +127,7 @@ std::vector<std::pair<std::string, float>> ShoreDB::kNearestNeighbours(
 }
 
 // Function to save database to a binary file
-bool ShoreDB::saveToDisk(const std::string& path) const {
+bool Flat::saveToDisk(const std::string& path) const {
   // Create a ofstream object
   std::ofstream vecFile;
   vecFile.open(path, std::ios::binary);
@@ -166,7 +166,7 @@ bool ShoreDB::saveToDisk(const std::string& path) const {
   return true;
 }
 
-bool ShoreDB::loadFromFile(const std::string& filename) {
+bool Flat::loadFromFile(const std::string& filename) {
   // Create ifstream object
   std::ifstream database;
 
@@ -233,7 +233,7 @@ bool ShoreDB::loadFromFile(const std::string& filename) {
   return true;
 }
 
-bool ShoreDB::deleteVector(const std::string id) {
+bool Flat::deleteVector(const std::string id) {
   try {
     int to_del = id_vector_map[id];
     VectorSpace[to_del].deleted = true;
@@ -245,7 +245,7 @@ bool ShoreDB::deleteVector(const std::string id) {
   return true;
 }
 
-bool ShoreDB::quickDelete(std::string id) {
+bool Flat::quickDelete(std::string id) {
   try {
     while (!VectorSpace.empty() && VectorSpace.back().deleted == true) {
       VectorSpace.pop_back();
@@ -266,7 +266,7 @@ bool ShoreDB::quickDelete(std::string id) {
   return false;
 }
 
-bool ShoreDB::removeDeletedVectors() {
+bool Flat::removeDeletedVectors() {
   for (std::size_t i = 0; i < VectorSpace.size(); ++i) {
     if (VectorSpace[i].deleted == true) {
       while (!VectorSpace.empty() && VectorSpace.back().deleted == true) {
@@ -288,9 +288,9 @@ bool ShoreDB::removeDeletedVectors() {
   return true;
 }
 
-float ShoreDB::getStats() { return float(freeSlots.size()) / float(VectorSpace.size()); }
+float Flat::getStats() { return float(freeSlots.size()) / float(VectorSpace.size()); }
 
-void ShoreDB::autoCleanup() {
+void Flat::autoCleanup() {
   float threshold = getStats();
   if (threshold >= cleanup_threshold) {
     bool res = removeDeletedVectors();

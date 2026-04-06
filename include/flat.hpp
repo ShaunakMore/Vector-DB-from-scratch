@@ -13,7 +13,7 @@ struct VectorEntry {
   bool deleted = false;
 };
 
-class ShoreDB {
+class Flat {
  public:
   std::vector<VectorEntry> VectorSpace;
   std::map<std::string, size_t> id_vector_map;
@@ -27,7 +27,7 @@ class ShoreDB {
   std::mt19937 generator;
   std::uniform_int_distribution<int> random_index_gen;
 
-  ShoreDB();
+  Flat();
 
   std::string randomIDGenerator();
 
