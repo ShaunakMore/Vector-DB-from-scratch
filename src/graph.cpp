@@ -2,28 +2,27 @@
 
 #include <algorithm>
 
-Node::Node(int assignedId, std::vector<float> vecData, int assignedLevel) {
+Node::Node(int assignedId, int assignedLevel) {
   id = assignedId;
-  data = vecData;
   level = assignedLevel;
   neighbours.resize(level + 1);
-  normaliseVector(data);
 }
 
-void Node::normaliseVector(std::vector<float> &vec) {
+void HNSW::normaliseVector(float *vecStart, int DIM) {
   float sqr_sum = 0.0;
-  for (float i : vec) {
-    sqr_sum += (i * i);
+  for (int i = 0; i < DIM; i++) {
+    sqr_sum += ((vecStart[i]) * (vecStart[i]));
   }
   float mag = std::sqrt(sqr_sum);
   if (mag > 0) {
-    for (float &val : vec) {
-      val /= mag;
+    for (auto i = 0; i < DIM; i++) {
+      vecStart[i] /= mag;
     }
   }
 }
 
-HNSW::HNSW(int m, int efC, int efS) {
+HNSW::HNSW(int m, int efC, int efS, int dim) {
+  DIM = dim;
   M = m;
   efConstruction = efC;
   efSearch = efS;
@@ -34,9 +33,13 @@ HNSW::HNSW(int m, int efC, int efS) {
   search_version = 0;
 }
 
-float HNSW::distance(const std::vector<float> &vec1, const std::vector<float> &vec2) {
+const float *HNSW::get_vector(int id) { return &flat_storage[id * DIM]; }
+
+float *HNSW::get_vector_mutable(int id) { return &flat_storage[id * DIM]; }
+
+float HNSW::distance(const float *vec1, const float *vec2) {
   float dot_prod = 0.0f;
-  for (size_t i = 0; i < vec1.size(); ++i) {
+  for (size_t i = 0; i < DIM; ++i) {
     dot_prod += vec1[i] * vec2[i];
   }
   return 1.0f - dot_prod;
@@ -47,10 +50,11 @@ int HNSW::assignLevel() {
   return level;
 }
 
-int HNSW::greedySearch(int entryNode, const std::vector<float> &queryVector, int level) {
+int HNSW::greedySearch(int entryNode, const float *vecStart, int level) {
   int current = entryNode;
 
-  float currentDist = distance(nodes[current].data, queryVector);
+  const float *entryStart = get_vector(current);
+  float currentDist = distance(entryStart, vecStart);
 
   while (true) {
     bool changed = false;
@@ -58,7 +62,7 @@ int HNSW::greedySearch(int entryNode, const std::vector<float> &queryVector, int
     std::vector<int> &neighbours = nodes[current].neighbours[level];
 
     for (int i : neighbours) {
-      float neighbourDist = distance(nodes[i].data, queryVector);
+      float neighbourDist = distance(get_vector(i), vecStart);
       if (neighbourDist < currentDist) {
         current = i;
         currentDist = neighbourDist;
@@ -75,7 +79,14 @@ void HNSW::insert(const std::vector<float> &vec) {
   int id = nodes.size();
   int level = assignLevel();
 
-  Node newNode = Node(id, vec, level);
+  flat_storage.insert(flat_storage.end(), vec.begin(), vec.end());
+
+  float *vecStart = get_vector_mutable(id);
+
+  normaliseVector(vecStart, DIM);
+
+  Node newNode = Node(id, level);
+
   if (nodes.empty()) {
     nodes.push_back(newNode);
     entryPoint = id;
@@ -89,7 +100,7 @@ void HNSW::insert(const std::vector<float> &vec) {
 
   int current = entryPoint;
   for (int layer = maxLevel; layer >= level + 1; layer--) {
-    current = greedySearch(current, nodes[id].data, layer);
+    current = greedySearch(current, get_vector(id), layer);
   }
 
   int startLayer = std::min(level, maxLevel);
@@ -97,7 +108,7 @@ void HNSW::insert(const std::vector<float> &vec) {
   for (int layer = startLayer; layer >= 0; layer--) {
     if (current == -1) break;
 
-    auto topCandidates = searchLayer(nodes[id].data, current, layer, efConstruction);
+    auto topCandidates = searchLayer(get_vector(id), current, layer, efConstruction);
 
     int closest_node_for_next_layer = -1;
     std::vector<int> candidateList;
@@ -132,8 +143,8 @@ void HNSW::insert(const std::vector<float> &vec) {
   }
 }
 
-std::priority_queue<std::pair<float, int>> HNSW::searchLayer(const std::vector<float> &query,
-                                                             int entryNode, int layer, int ef) {
+std::priority_queue<std::pair<float, int>> HNSW::searchLayer(const float *query, int entryNode,
+                                                             int layer, int ef) {
   /*
     Makes use of vectors linear nature to reduce memory allocation and
     reallocation, also reduces access time to O(1). Increment search version on
@@ -151,7 +162,7 @@ std::priority_queue<std::pair<float, int>> HNSW::searchLayer(const std::vector<f
       candidateQueue;
   std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>> topCandidates;
 
-  float entryNodeDist = distance(query, nodes[entryNode].data);
+  float entryNodeDist = distance(query, get_vector(entryNode));
 
   candidateQueue.push({entryNodeDist, entryNode});
   topCandidates.push({entryNodeDist, entryNode});
@@ -171,7 +182,7 @@ std::priority_queue<std::pair<float, int>> HNSW::searchLayer(const std::vector<f
     for (int neighbour : nodes[currentId].neighbours[layer]) {
       if (visited[neighbour] != search_version) {
         visited[neighbour] = search_version;
-        float distNeighbour = distance(query, nodes[neighbour].data);
+        float distNeighbour = distance(query, get_vector(neighbour));
 
         if (topCandidates.size() < (size_t)ef || distNeighbour < topCandidates.top().first) {
           candidateQueue.push({distNeighbour, neighbour});
@@ -200,7 +211,7 @@ void HNSW::pruneNeighbours(int nodeId, int layer) {
   std::vector<std::pair<float, int>> candidates;
   candidates.reserve(neighbours.size());
   for (int neighbour : neighbours) {
-    float d = distance(nodes[nodeId].data, nodes[neighbour].data);
+    float d = distance(get_vector(nodeId), get_vector(neighbour));
     candidates.push_back({d, neighbour});
   }
   std::sort(candidates.begin(), candidates.end());
@@ -221,7 +232,7 @@ void HNSW::pruneNeighbours(int nodeId, int layer) {
     // Check if this candidate is closer to ANY already kept neighbour than to
     // the base node
     for (int keptId : keptNeighbours) {
-      float distToKept = distance(nodes[candidateId].data, nodes[keptId].data);
+      float distToKept = distance(get_vector(candidateId), get_vector(keptId));
       if (distToKept < distToNode) {
         goodEdge = false;
         break;
@@ -262,12 +273,13 @@ std::vector<std::pair<int, float>> HNSW::search(std::vector<float> &query, int k
     return topK;
   }
 
+  const float *queryStart = &query[0];
   int current = entryPoint;
   for (int i = maxLevel; i > 0; i--) {
-    current = greedySearch(current, query, i);
+    current = greedySearch(current, queryStart, i);
   }
 
-  auto topCandidates = searchLayer(query, current, 0, efSearch);
+  auto topCandidates = searchLayer(queryStart, current, 0, efSearch);
   while (topCandidates.size() > (size_t)k) {
     topCandidates.pop();
   }

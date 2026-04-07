@@ -4,41 +4,56 @@
 #include <vector>
 
 /**
- *@brief Node class whjich stores graph node details and handles normalization.
- *The normalizeVector method normalizes the Node vector on Node creation  using L2-Norm. This should
-  be taken into consideration while considering similarity search. The distance calculated after
-  L2-Norm is cosine distance. Refer distance method implementation for more info.
+ *@brief Node class which stores graph node data.
  */
 class Node {
   /* data */
  public:
-  int id;                   ///< Node id
-  std::vector<float> data;  ///< Vector data
-  int level;                ///< The highest level of graph on which the node exists
-  std::vector<std::vector<int>>
-      neighbours;  ///< List of all the neighbours of the Node at every level upto its highest level
-  Node(int assignedId, std::vector<float> vecData, int assignedLevel);
-  void normaliseVector(std::vector<float>& vec);  ///< Normalize the Node vector data
+  int id;     ///< Node id
+  int level;  ///< The highest level of graph on which the node exists
+  std::vector<std::vector<int>> neighbours;  ///< List of ids all the neighbours of the Node at
+                                             ///< every level upto its highest level
+  Node(int assignedId, int assignedLevel);
 };
 
 class HNSW {
  public:
+  int DIM;  ///< Dimension of the input vectors
+
+  std::vector<float>
+      flat_storage;  ///< A flat storage which stores all input vectors in a linear fashion
+
   std::vector<Node> nodes;  ///< List of all the nodes in the graph
+
   std::vector<int>
       visited;  ///< Used for keeping track of visited nodes using versioning to improve
                 ///< greedySearch performance. Refer greedy search implementation for more info.
+
   int search_version;  ///< Tracks search version
 
   int entryPoint;  ///< Entry point to the NSW graph
-  int maxLevel;    ///< The maximum level in the graph
+
+  int maxLevel;  ///< The maximum level in the graph
+
   int M;
+
   int efConstruction;  ///< Max size of the candidate list during graph construction
-  int efSearch;        ///< Max size of the candidate list during graph search
+
+  int efSearch;  ///< Max size of the candidate list during graph search
+
   float mL;
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist;
 
-  HNSW(int m, int efC, int efS);
+  HNSW(int m, int efC, int efS, int dim);
+
+  /**
+   *@brief A method that returns a pointer reference to data using its id
+   */
+  const float* get_vector(int id);
+
+  float* get_vector_mutable(int id);
+
   /**
    *@brief Inserts node into the HNSW Index.
    *@param vec Input vector.
@@ -56,6 +71,8 @@ class HNSW {
   std::vector<std::pair<int, float>> search(std::vector<float>& query, int k);
 
  private:
+  void normaliseVector(float* vecStart, int DIM);
+
   /**
    *@brief Normalizes the vector to reduce distance computation.
    *@param vec1 Input vector 1.
@@ -63,7 +80,7 @@ class HNSW {
    *@return Cosine distance between the two vectors.
    *This method runs on every new Node creation through the Node constructor.
    */
-  float distance(const std::vector<float>& vec1, const std::vector<float>& vec2);
+  float distance(const float* vec1_start, const float* vec2_start);
 
   /**
    *@brief Assigns a random level to a new node using a random, exponentially decaying function.
@@ -81,7 +98,7 @@ class HNSW {
    *Nodes are referenced using their ids instead of returning the complete Node object, makes it
    *easy to access Node data and also improves performance.
    */
-  int greedySearch(int entryNode, const std::vector<float>& queryVector, int level);
+  int greedySearch(int entryNode, const float* vecStart, int level);
 
   /**
    *@brief Searches the layer for the best possible ef number of candidates closest to query. Starts
@@ -92,8 +109,8 @@ class HNSW {
    *@param ef The hyperparameter efConstruction that decides the size of the candidate list.
    *@return A priority queue containing (distance, id) pairs of top ef number of candidates.
    */
-  std::priority_queue<std::pair<float, int>> searchLayer(const std::vector<float>& query,
-                                                         int entryNode, int layer, int ef);
+  std::priority_queue<std::pair<float, int>> searchLayer(const float* query, int entryNode,
+                                                         int layer, int ef);
 
   /**
    *@brief Prunes edges heuristically while maintaining spacial diversity.
