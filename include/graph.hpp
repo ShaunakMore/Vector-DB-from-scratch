@@ -48,17 +48,23 @@ class HNSW {
   HNSW(int m, int efC, int efS, int dim);
 
   /**
-   *@brief A method that returns a pointer reference to data using its id
+   *@brief A method that returns a pointer to the vector data using its id.
+   *@param id The id of the vector we want to retrieve.
+   *@return Pointer to query vector.
    */
   const float* get_vector(int id);
 
+  /**
+   *@brief Mutable form of the get_vector method.
+   */
   float* get_vector_mutable(int id);
 
   /**
-   *@brief Inserts node into the HNSW Index.
+   *@brief Inserts node into the HNSW Index and vector into flat storage.
    *@param vec Input vector.
    *@return Nothing.
-   *Creates an instance of the Node class to store the input vector.
+   *Stores the vector data into a flat storage and creates an instance of the Node class to add the
+   *Node to the Index.
    */
   void insert(const std::vector<float>& vec);
 
@@ -75,8 +81,8 @@ class HNSW {
 
   /**
    *@brief Normalizes the vector to reduce distance computation.
-   *@param vec1 Input vector 1.
-   *@param vec2 Input vector 2.
+   *@param vec1 Pointer to Input vector 1.
+   *@param vec2 Pointer to Input vector 2.
    *@return Cosine distance between the two vectors.
    *This method runs on every new Node creation through the Node constructor.
    */
@@ -90,20 +96,20 @@ class HNSW {
   int assignLevel();
 
   /**
-   *@brief **Greedily** searches for the closest nodes starting from the entry node.
+   *@brief Greedily searches for the closest nodes starting from the entry node.
    *@param entryNode The entry node from which the search begins for the layer.
-   *@param queryVector The vector for which we need to find the closest node.
+   *@param queryVector Pointer to the vector for which we need to find the closest node.
    *@param level The level of the graph on which we are searching.
    *@return Closest node to queryVector on the provided level.
    *Nodes are referenced using their ids instead of returning the complete Node object, makes it
    *easy to access Node data and also improves performance.
    */
-  int greedySearch(int entryNode, const float* vecStart, int level);
+  int greedySearch(int entryNode, const float* queryVecStart, int level);
 
   /**
    *@brief Searches the layer for the best possible ef number of candidates closest to query. Starts
            with neighbours of entryNode.
-   *@param query A reference to the query vector for which we need to find the closest neighbours.
+   *@param query Pointer to the query vector for which we need to find the closest neighbours.
    *@param entryNode The entry node to the layer where we begin our search.
    *@param layer The current layer of the graph we are searching on.
    *@param ef The hyperparameter efConstruction that decides the size of the candidate list.

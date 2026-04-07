@@ -9,7 +9,7 @@ Node::Node(int assignedId, int assignedLevel) {
 }
 
 void HNSW::normaliseVector(float *vecStart, int DIM) {
-  float sqr_sum = 0.0;
+  float sqr_sum = 0.0f;
   for (int i = 0; i < DIM; i++) {
     sqr_sum += ((vecStart[i]) * (vecStart[i]));
   }
@@ -39,22 +39,22 @@ float *HNSW::get_vector_mutable(int id) { return &flat_storage[id * DIM]; }
 
 float HNSW::distance(const float *vec1, const float *vec2) {
   float dot_prod = 0.0f;
-  for (size_t i = 0; i < DIM; ++i) {
-    dot_prod += vec1[i] * vec2[i];
+  for (int i = 0; i < DIM; i++) {
+    dot_prod += (vec1[i] * vec2[i]);
   }
   return 1.0f - dot_prod;
 }
 
 int HNSW::assignLevel() {
-  int level = floor(-log(dist(gen)) * mL);
+  int level = std::floor(-log(dist(gen)) * mL);
   return level;
 }
 
-int HNSW::greedySearch(int entryNode, const float *vecStart, int level) {
+int HNSW::greedySearch(int entryNode, const float *queryVecStart, int level) {
   int current = entryNode;
 
   const float *entryStart = get_vector(current);
-  float currentDist = distance(entryStart, vecStart);
+  float currentDist = distance(entryStart, queryVecStart);
 
   while (true) {
     bool changed = false;
@@ -62,7 +62,7 @@ int HNSW::greedySearch(int entryNode, const float *vecStart, int level) {
     std::vector<int> &neighbours = nodes[current].neighbours[level];
 
     for (int i : neighbours) {
-      float neighbourDist = distance(get_vector(i), vecStart);
+      float neighbourDist = distance(get_vector(i), queryVecStart);
       if (neighbourDist < currentDist) {
         current = i;
         currentDist = neighbourDist;
@@ -80,7 +80,6 @@ void HNSW::insert(const std::vector<float> &vec) {
   int level = assignLevel();
 
   flat_storage.insert(flat_storage.end(), vec.begin(), vec.end());
-
   float *vecStart = get_vector_mutable(id);
 
   normaliseVector(vecStart, DIM);
