@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-
 Node::Node(int assignedId, std::vector<float> vecData, int assignedLevel) {
   id = assignedId;
   data = vecData;
@@ -12,15 +11,6 @@ Node::Node(int assignedId, std::vector<float> vecData, int assignedLevel) {
 }
 
 void Node::normaliseVector(std::vector<float> &vec) {
-  /*
-  FUNCTION:
-    Normalizes the vector to reduce distance computation. Triggered on Node
-  creation.
-
-  FUNCTION PARAMETERS:
-    vec: vector (float), The vector who is to be normalised
-  */
-
   float sqr_sum = 0.0;
   for (float i : vec) {
     sqr_sum += (i * i);
@@ -35,29 +25,17 @@ void Node::normaliseVector(std::vector<float> &vec) {
 
 HNSW::HNSW(int m, int efC, int efS) {
   M = m;
-  efConstruction =
-      efC;  // Max size of the candidate list during graph construction
+  efConstruction = efC;
   efSearch = efS;
   mL = 1 / log(M);
   maxLevel = -1;
   gen = std::mt19937(std::random_device{}());
-  dist = std::uniform_real_distribution<float>(
-      std::numeric_limits<float>::epsilon(), 1);
+  dist = std::uniform_real_distribution<float>(std::numeric_limits<float>::epsilon(), 1);
   search_version = 0;
 }
 
-float HNSW::distance(const std::vector<float> &vec1,
-                     const std::vector<float> &vec2) {
-  /*
-  FUNCTION:
-    Calculates the L2 distance between the two vectors.
-
-  FUNCTION PARAMETERS:
-    vec1, vec2: vector (float), The two vectors whose L2 distance is to be
-  calculated
-  */
-
-  float dot_prod = 0;
+float HNSW::distance(const std::vector<float> &vec1, const std::vector<float> &vec2) {
+  float dot_prod = 0.0f;
   for (size_t i = 0; i < vec1.size(); ++i) {
     dot_prod += vec1[i] * vec2[i];
   }
@@ -65,34 +43,11 @@ float HNSW::distance(const std::vector<float> &vec1,
 }
 
 int HNSW::assignLevel() {
-  /*
-  FUNCTION:
-    Assigns a random level to a new node using a random, exponentially decaying
-  function
-
-  FUNCTION PARAMETERS:
-
-  */
-
   int level = floor(-log(dist(gen)) * mL);
   return level;
 }
 
-int HNSW::greedySearch(int entryNode, const std::vector<float> &queryVector,
-                       int level) {
-  /*
-  FUNCTION:
-    Greedy searches for the closest nodes starting from the entry node.
-
-  FUNCTION PARAMETERS:
-    entryNode: integer, The entry node from which the search begins for the
-  layer. queryVector: vector (float), The vector for which we need to find the
-  closest node level: integer, The level of the graph on which we are searching.
-  */
-
-  // Set the entry node as the current node
-  // Better to reference using ids instead of passing Node objects
-
+int HNSW::greedySearch(int entryNode, const std::vector<float> &queryVector, int level) {
   int current = entryNode;
 
   float currentDist = distance(nodes[current].data, queryVector);
@@ -117,16 +72,6 @@ int HNSW::greedySearch(int entryNode, const std::vector<float> &queryVector,
 }
 
 void HNSW::insert(const std::vector<float> &vec) {
-  /*
-  FUNCTION:
-    Inserts a new node into the graph at the level assigned to it and connects
-  it to other nodes.
-
-  FUNCTION PARAMETERS:
-    vec: vector (float), The vector data that is to be inserted
-
-  */
-
   int id = nodes.size();
   int level = assignLevel();
 
@@ -152,8 +97,7 @@ void HNSW::insert(const std::vector<float> &vec) {
   for (int layer = startLayer; layer >= 0; layer--) {
     if (current == -1) break;
 
-    auto topCandidates =
-        searchLayer(nodes[id].data, current, layer, efConstruction);
+    auto topCandidates = searchLayer(nodes[id].data, current, layer, efConstruction);
 
     int closest_node_for_next_layer = -1;
     std::vector<int> candidateList;
@@ -188,28 +132,14 @@ void HNSW::insert(const std::vector<float> &vec) {
   }
 }
 
-std::priority_queue<std::pair<float, int>> HNSW::searchLayer(
-    const std::vector<float> &query, int entryNode, int layer, int ef) {
-  /*
-  FUNCTION:
-    Searches the layer for the best possible ef number of candidates closest to
-  query. Starts with neighbours of entryNode.
-
-  FUNCTION PARAMETERS:
-    query: vector (float), A reference to the query vector for which we need to
-  find the closest neighbours entryNode: integer, The entry node to the layer
-  where we begin our search layer: integer, The current layer of the graph we
-  are searching on ef: integer, The hyperparameter efConstruction that decides
-  the size of the candidate list
-  */
-
+std::priority_queue<std::pair<float, int>> HNSW::searchLayer(const std::vector<float> &query,
+                                                             int entryNode, int layer, int ef) {
   /*
     Makes use of vectors linear nature to reduce memory allocation and
     reallocation, also reduces access time to O(1). Increment search version on
     each function call so the corresponding visited edges correspond to the
     version.
   */
-
   search_version++;
   if (search_version == 0) {
     std::fill(visited.begin(), visited.end(), 0);
@@ -219,8 +149,7 @@ std::priority_queue<std::pair<float, int>> HNSW::searchLayer(
   std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>,
                       std::greater<std::pair<float, int>>>
       candidateQueue;
-  std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>>
-      topCandidates;
+  std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>> topCandidates;
 
   float entryNodeDist = distance(query, nodes[entryNode].data);
 
@@ -244,8 +173,7 @@ std::priority_queue<std::pair<float, int>> HNSW::searchLayer(
         visited[neighbour] = search_version;
         float distNeighbour = distance(query, nodes[neighbour].data);
 
-        if (topCandidates.size() < (size_t)ef ||
-            distNeighbour < topCandidates.top().first) {
+        if (topCandidates.size() < (size_t)ef || distNeighbour < topCandidates.top().first) {
           candidateQueue.push({distNeighbour, neighbour});
           topCandidates.push({distNeighbour, neighbour});
 
@@ -260,16 +188,6 @@ std::priority_queue<std::pair<float, int>> HNSW::searchLayer(
 }
 
 void HNSW::pruneNeighbours(int nodeId, int layer) {
-  /*
-  FUNCTION:
-    Prunes edges heuristically while maintaining spacial diversity.
-
-  FUNCTION PARAMETERS:
-    nodeId: integer, The index id of the node whose edges have to be pruned.
-    layer: integer, The layer from of the graph from which the edges are being
-  pruned.
-  */
-
   std::vector<int> &neighbours = nodes[nodeId].neighbours[layer];
 
   // Layer 0 gets double capacity to prevent dead ends at the base
@@ -280,6 +198,7 @@ void HNSW::pruneNeighbours(int nodeId, int layer) {
 
   // Cache distances and sort closest-first
   std::vector<std::pair<float, int>> candidates;
+  candidates.reserve(neighbours.size());
   for (int neighbour : neighbours) {
     float d = distance(nodes[nodeId].data, nodes[neighbour].data);
     candidates.push_back({d, neighbour});
@@ -287,7 +206,9 @@ void HNSW::pruneNeighbours(int nodeId, int layer) {
   std::sort(candidates.begin(), candidates.end());
 
   std::vector<int> keptNeighbours;
+  keptNeighbours.reserve(maxM);
   std::vector<int> discardedNeighbours;
+  discardedNeighbours.reserve(maxM);
 
   // The Heuristic Check
   for (auto &candidate : candidates) {
@@ -322,19 +243,9 @@ void HNSW::pruneNeighbours(int nodeId, int layer) {
   neighbours = std::move(keptNeighbours);
 }
 
-std::vector<std::pair<int, float>> HNSW::search(std::vector<float> &query,
-                                                int k) {
-  /*
-  FUNCTION:
-    Search for top-k candidates
-
-  FUNCTION PARAMETERS:
-    query: vector (float), The query vector to which we have to finc the most
-  similar vectors. k: integer, The no. of top similar vector to return.
-  */
-
+std::vector<std::pair<int, float>> HNSW::search(std::vector<float> &query, int k) {
   // Normalize the query vector since all the added vectors are normalized
-  float sqr_sum = 0.0;
+  float sqr_sum = 0.0f;
   for (float i : query) {
     sqr_sum += (i * i);
   }
