@@ -95,7 +95,6 @@ class IVF {
    *This function operates under the assumption that both the input vectors are normalized. If using
     exteranally, care should be taken that the input vector passed should be normalized to avoid
     mistakes.
-
    */
   float distance(const std::vector<float> &vec1, const std::vector<float> &vec2);
 };

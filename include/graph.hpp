@@ -80,11 +80,10 @@ class HNSW {
   void normaliseVector(float* vecStart, int DIM);
 
   /**
-   *@brief Normalizes the vector to reduce distance computation.
+   *@brief Computes cosine distance.
    *@param vec1 Pointer to Input vector 1.
    *@param vec2 Pointer to Input vector 2.
    *@return Cosine distance between the two vectors.
-   *This method runs on every new Node creation through the Node constructor.
    */
   float distance(const float* vec1_start, const float* vec2_start);
 
